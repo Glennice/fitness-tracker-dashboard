@@ -1,0 +1,69 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+# Initialize session state for calorie and weight tracking if not already set
+if 'calorie_data' not in st.session_state:
+    st.session_state.calorie_data = pd.DataFrame(columns=['Date', 'Meal', 'Food', 'Calories', 'Protein', 'Carbs', 'Fats'])
+
+if 'weight_data' not in st.session_state:
+    st.session_state.weight_data = pd.DataFrame(columns=['Date', 'Weight'])
+
+# Panel 1: Calorie Tracker
+st.title("Fitness and Health Tracker Dashboard")
+st.header("Calorie Tracker")
+
+target_calories = st.number_input("Set Daily Calorie Goal", value=2500)
+target_protein = st.number_input("Set Daily Protein Goal (g)", value=190)
+target_carbs = st.number_input("Set Daily Carbs Goal (g)", value=260)
+target_fats = st.number_input("Set Daily Fats Goal (g)", value=85)
+
+date = st.date_input("Select Date", datetime.today())
+meal = st.selectbox("Meal Type", ["Coffee", "Breakfast", "Snack", "Lunch", "Dinner", "Dessert", "Other"])
+food = st.text_input("Food Item")
+calories = st.number_input("Calories", min_value=0, value=0)
+protein = st.number_input("Protein (g)", min_value=0.0, value=0.0)
+carbs = st.number_input("Carbs (g)", min_value=0.0, value=0.0)
+fats = st.number_input("Fats (g)", min_value=0.0, value=0.0)
+
+if st.button("Add Meal"):
+    new_entry = pd.DataFrame([[date, meal, food, calories, protein, carbs, fats]],
+                             columns=['Date', 'Meal', 'Food', 'Calories', 'Protein', 'Carbs', 'Fats'])
+    new_entry['Date'] = pd.to_datetime(new_entry['Date'])  # Ensure Date is in datetime format
+    st.session_state.calorie_data = pd.concat([st.session_state.calorie_data, new_entry], ignore_index=True)
+
+# Display weekly tracker
+st.session_state.calorie_data['Date'] = pd.to_datetime(st.session_state.calorie_data['Date'])  # Convert before grouping
+df_weekly = st.session_state.calorie_data.groupby('Date').sum()
+st.write("### Weekly Summary")
+st.dataframe(df_weekly)
+
+deficit = target_calories - df_weekly['Calories'].sum()
+st.write(f"Total Weekly Calories: {df_weekly['Calories'].sum()} / {target_calories * 7} (Deficit: {deficit})")
+
+# Panel 2: Weight Tracker
+st.header("Weight Tracker")
+
+target_weight = st.number_input("Target Weight (kg)", value=80)
+starting_weight = st.number_input("Starting Weight (kg)", value=85.5)
+body_fat_percentage = st.number_input("Starting Body Fat %", value=20.0)
+
+date_weight = st.date_input("Weight Entry Date", datetime.today())
+weight = st.number_input("Enter New Weight (kg)", min_value=0.0, value=starting_weight)
+
+if st.button("Add Weight Entry"):
+    new_weight_entry = pd.DataFrame([[date_weight, weight]], columns=['Date', 'Weight'])
+    new_weight_entry['Date'] = pd.to_datetime(new_weight_entry['Date'])  # Ensure Date is in datetime format
+    st.session_state.weight_data = pd.concat([st.session_state.weight_data, new_weight_entry], ignore_index=True)
+
+# Plot weight tracking
+if not st.session_state.weight_data.empty:
+    st.write("### Weight Progress")
+    fig, ax = plt.subplots()
+    st.session_state.weight_data['Date'] = pd.to_datetime(st.session_state.weight_data['Date'])
+    ax.plot(st.session_state.weight_data['Date'], st.session_state.weight_data['Weight'], marker='o', linestyle='-')
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Weight (kg)")
+    ax.set_title("Weight Progress Over Time")
+    st.pyplot(fig)
